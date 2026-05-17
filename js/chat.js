@@ -107,45 +107,62 @@ const Chat = (() => {
     state.context = 'budget';
     state.collected = entities;
 
-    // Check what we already know
     const hasIncome = entities.monthlyIncome && entities.monthlyIncome > 0;
     const hasFixed = entities.fixedExpense !== undefined;
     const hasSaving = entities.savingTarget !== undefined;
 
     if (hasIncome && hasFixed && hasSaving) {
-      // We have enough — compute immediately
       computeAndShowBudget();
       return;
     }
 
-    if (hasIncome) {
-      // Has income, ask for fixed expenses
-      state.step = 2;
-      UI.renderAgentMessage(
-        `好的，月生活费 **¥${entities.monthlyIncome}** 收到～\n\n接下来需要你补充一下：\n📤 **每月的固定支出**大概多少？比如话费、网费、交通卡、订阅服务等。\n\n如果没有固定支出，直接说"没有"或"0"就行～`
-      );
-    } else {
-      // Need income first
+    // Ask the next missing piece
+    if (!hasIncome) {
       state.step = 1;
       UI.renderAgentMessage(
         '没问题，我来帮你做预算规划！📋\n\n首先告诉我：\n📥 **你这个月的生活费（或月收入）是多少？**\n\n包括家里给的生活费、兼职收入、奖学金等，统统算上～'
       );
+    } else if (!hasFixed) {
+      state.step = 2;
+      UI.renderAgentMessage(
+        `好的，月生活费 **¥${entities.monthlyIncome}** 收到～\n\n接下来需要你补充一下：\n📤 **每月的固定支出**大概多少？比如话费、网费、交通卡、订阅服务等。\n\n如果没有固定支出，直接说"没有"或"0"就行～`
+      );
+    } else if (!hasSaving) {
+      state.step = 3;
+      UI.renderAgentMessage(
+        `收到！固定支出 **¥${entities.fixedExpense}**。\n\n接下来：💰 **你计划每月存多少钱？**\n\n哪怕¥50也好，积少成多～不想存就说"0"。`
+      );
     }
+  }
+
+  /**
+   * Check if message is a "zero" or "no/none" response.
+   * Must match standalone "0" (not part of another number like "200").
+   */
+  function isDeclineAnswer(msg) {
+    const t = msg.trim();
+    // Exact match for "0" or "0.0" etc
+    if (/^0(?:\.0+)?$/.test(t)) return true;
+    // Decline words
+    if (/^(?:没有|无|没|否|不存|不攒|不想存|不用|算了|直接算|好了|可以了|不需要)$/.test(t)) return true;
+    return false;
   }
 
   function handleBudgetFlow(message, intent, entities) {
     Object.assign(state.collected, entities);
 
-    const hasIncome = state.collected.monthlyIncome && state.collected.monthlyIncome > 0;
-    const hasFixed = state.collected.fixedExpense !== undefined;
-    const hasSaving = state.collected.savingTarget !== undefined;
-    const hasSpecial = state.collected.specialExpense !== undefined;
+    const knownIncome = state.collected.monthlyIncome;
+    const num = extractNumber(message);
 
-    if (!hasIncome) {
-      // Try to extract income from message
-      const num = extractNumber(message);
+    // ── Step 1: Collect monthly income ──────────────────────────
+    if (state.step === 1) {
       if (num && num >= 100) {
         state.collected.monthlyIncome = num;
+        state.step = 2;
+        UI.renderAgentMessage(
+          `好的，月生活费 **¥${num}** 收到～\n\n接下来需要你补充一下：\n📤 **每月的固定支出**大概多少？比如话费、网费、交通卡、订阅服务等。\n\n如果没有固定支出，直接说"没有"或"0"就行～`
+        );
+        return;
       } else if (num && num < 100) {
         UI.renderAgentMessage('这个数字看起来不太像月收入哦～请告诉我你每月的生活费总额，比如"1500"或"2000元"。');
         return;
@@ -155,51 +172,70 @@ const Chat = (() => {
       }
     }
 
-    if (!hasFixed && state.step <= 2) {
-      const num = extractNumber(message);
-      if (num !== null || /没有|无|0|没|否/.test(message)) {
-        state.collected.fixedExpense = num || 0;
-        state.step = 3;
+    // ── Step 2: Collect fixed expense ───────────────────────────
+    if (state.step === 2) {
+      const isIncomeNumber = knownIncome && num === knownIncome;
+      const hasFixedContext = /固定|话费|网费|交通|月租|订阅|房租|水电|物业/.test(message);
+
+      if (isDeclineAnswer(message)) {
+        state.collected.fixedExpense = 0;
+      } else if (isIncomeNumber && !hasFixedContext) {
+        UI.renderAgentMessage(
+          `这个数字和你的月生活费一样呢～请单独告诉我**每月固定支出**是多少？\n\n比如话费、网费、交通卡、订阅服务等。和月收入分开算哦～`
+        );
+        return;
+      } else if (num !== null) {
+        state.collected.fixedExpense = num;
       } else {
         UI.renderAgentMessage('大概多少呢？给个数字就行～比如话费+网费+交通卡每月"100元"。没有的话就说"没有"。');
         return;
       }
+
+      // Successfully collected fixed, now ask for saving
+      state.step = 3;
+      UI.renderAgentMessage('你计划每月存多少钱呢？哪怕¥50也好，积少成多～不想存就说"0"。');
+      return;
     }
 
-    if (!hasSaving && state.step <= 3) {
-      const num = extractNumber(message);
-      if (num !== null || /没有|无|0|不存|不攒|否/.test(message)) {
-        state.collected.savingTarget = num || 0;
-        state.step = 4;
+    // ── Step 3: Collect saving target ───────────────────────────
+    if (state.step === 3) {
+      const isIncomeNumber = knownIncome && num === knownIncome;
+      const hasSavingContext = /存|攒|储蓄|目标/.test(message);
+
+      if (isDeclineAnswer(message)) {
+        state.collected.savingTarget = 0;
+      } else if (isIncomeNumber && !hasSavingContext) {
+        UI.renderAgentMessage(
+          `这个数字和月收入一样～请告诉我你计划**每月存多少钱**？\n\n哪怕¥50也好，积少成多～不想存就说"0"。`
+        );
+        return;
+      } else if (num !== null) {
+        state.collected.savingTarget = num;
       } else {
         UI.renderAgentMessage('你计划每月存多少钱呢？哪怕¥50也好，积少成多～不想存就说"0"。');
         return;
       }
-    }
 
-    // Ask about special expenses if not provided
-    if (!hasSpecial && state.step <= 4) {
-      if (/没有|无|0|不|否|直接算|好了/.test(message) && state.collected.monthlyIncome) {
-        state.collected.specialExpense = 0;
-        computeAndShowBudget();
-        return;
-      }
+      // Successfully collected saving, now ask for special
+      state.step = 4;
       UI.renderAgentMessage('最后再问一个：这个月有没有**特殊的较大支出**？比如考试报名、同学聚会、旅行、买教材等。没有就说"没有"，我直接帮你算～');
-      state.step = 5;
       return;
     }
 
-    if (!hasSpecial && state.step === 5) {
-      const num = extractNumber(message);
-      if (num !== null) {
-        state.collected.specialExpense = num;
-      } else if (/没有|无|0|不|否/.test(message)) {
+    // ── Step 4: Collect special expense, then compute ───────────
+    if (state.step === 4) {
+      if (isDeclineAnswer(message) && state.collected.monthlyIncome) {
         state.collected.specialExpense = 0;
+      } else if (num !== null) {
+        state.collected.specialExpense = num;
       } else {
         state.collected.specialExpense = 0;
       }
+      computeAndShowBudget();
+      return;
     }
 
+    // Fallback: if somehow we have all data, compute
     computeAndShowBudget();
   }
 
@@ -297,7 +333,7 @@ const Chat = (() => {
 
     // Ask for current savings
     if (state.collected.currentAmount === undefined) {
-      if (/没有|0|还没|无|否/.test(message) && state.collected.deadlineWeeks) {
+      if (isDeclineAnswer(message) && state.collected.deadlineWeeks) {
         state.collected.currentAmount = 0;
         computeAndShowSavingPlan();
         return;
