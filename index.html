@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>钱搭子 MoneyMate — MVP</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ================================================================
+       Info Panel
+       ================================================================ -->
+  <div class="info-panel">
+    <h3>钱搭子 MoneyMate</h3>
+    <p class="subtitle">招商银行App校园场景<br>AI理财陪伴智能体 MVP</p>
+
+    <div class="color-row">
+      <span class="swatch" style="background:#D71920" title="招行红"></span>
+      <span class="swatch" style="background:#8A0F14" title="深红"></span>
+      <span class="swatch" style="background:#C89B3C" title="暖金"></span>
+      <span class="swatch" style="background:#2B2B2B" title="深灰"></span>
+      <span class="swatch" style="background:#F7F7F7" title="浅灰"></span>
+    </div>
+
+    <div class="info-divider"></div>
+
+    <div class="info-item"><strong>核心能力</strong></div>
+    <div class="info-item">💸 生活费预算生成</div>
+    <div class="info-item">🎯 攒钱目标计划</div>
+    <div class="info-item">🛡️ 投前冷静问答</div>
+    <div class="info-item">📚 理财基础概念</div>
+
+    <div class="info-divider"></div>
+
+    <div class="info-item"><strong>交互方式</strong></div>
+    <div class="info-item">⌨️ 自由输入对话</div>
+    <div class="info-item">⚡ 快捷入口引导</div>
+    <div class="info-item">🃏 卡片化结果展示</div>
+    <div class="info-item">🔄 多轮信息补全</div>
+
+    <div class="info-divider"></div>
+
+    <div class="info-item" style="color:var(--cmb-red);font-weight:600;margin-top:6px;">
+      🧪 Demo版 · 仅保存昵称/预算/<br>目标等最小必要信息
+    </div>
+    <div class="info-item" style="color:var(--cmb-mid-gray);font-size:10px;margin-top:4px;">
+      不接入银行卡 · 不推荐产品<br>不承诺收益 · 不索要敏感信息
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Phone Mockup
+       ================================================================ -->
+  <div class="phone-wrapper">
+    <div class="phone-label">钱搭子 <span>MoneyMate</span></div>
+    <div class="phone">
+
+      <!-- Status Bar -->
+      <div class="phone-status">
+        <span class="time">9:41</span>
+        <span class="icons">5G ▮▮▮▮ 🔋</span>
+      </div>
+
+      <!-- Header -->
+      <div class="phone-header">
+        <span class="back">‹</span>
+        <span class="title">钱搭子</span>
+        <button class="reset-btn" id="resetBtn">↻ 重置</button>
+      </div>
+
+      <!-- Chat Body -->
+      <div class="phone-body" id="chatScroll">
+        <div id="chatMessages"></div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="input-bar">
+        <input type="text" id="chatInput"
+               placeholder="输入生活费、攒钱目标或理财问题..."
+               autocomplete="off">
+        <button class="send-btn" id="sendBtn">↑</button>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <div class="phone-nav">
+        <button class="nav-item active">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label">聊天</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">💸</span>
+          <span class="nav-label">预算</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">🎯</span>
+          <span class="nav-label">攒钱</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-label">投前冷静</span>
+        </button>
+      </div>
+      <div class="phone-home-indicator"></div>
+
+    </div><!-- /phone -->
+  </div><!-- /phone-wrapper -->
+
+</div><!-- /app-layout -->
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- JavaScript Modules (order matters) -->
+<script src="js/config.js"></script>
+<script src="js/intent.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
